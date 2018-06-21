@@ -28,6 +28,8 @@ resultCell = cell(1, settings.nWorkers);
 isMasterOn = 1;
 isSlavesOn = 1;
 workersDone = 0;
+paramUnitSize = length(paramCell);
+% keys = cell(1, settings.nWorkers);
 
 % set IPC
 masterPort = 9090;
@@ -55,7 +57,7 @@ flag = 1;
 
 % master loop
 while(isMasterOn && isSlavesOn)
-    % while(1)
+% while(1)
     % evaluate if isWorker
     if(settings.isWorker)
         fprintf('Master is worker, evaluating job.\n');
@@ -79,15 +81,14 @@ while(isMasterOn && isSlavesOn)
                     fprintf('Collecting results from worker: %s\n', workersPid{worker});
                     resKey = ['res_' workersPid{worker}];
                     resultCell{worker} = SharedMemory('attach', resKey);
-                    SharedMemory('detach', resKey, resultCell{worker});
+                    SharedMemory('detach', resKey);
                 end
                 flag = 0;
             end
         end
     end
     
-    % Order Workers to terminate
-    %     fprintf(masterSocket, 'terminate');
+    
     %     IPC version
     %     if(strcmp(masterSocket.status,'open'))
     %         for worker = 1:settings.nWorkers
@@ -106,18 +107,14 @@ while(isMasterOn && isSlavesOn)
     end
 end
 fclose(masterSocket);
-
 fprintf('Master freeing Shared memory.\n');
 % free SharedMemory fhandle
-SharedMemory('detach', 'fhandle', fHandle);
-SharedMemory('free', 'fhandle');
+SharedMemory('free', 'fhandle', fHandle);
 % free SharedMemory data
-SharedMemory('detach', 'data', dataCell);
-SharedMemory('free', 'data');
+SharedMemory('free', 'data', dataCell);
 % free SharedMemory params
 for worker = 1:settings.nWorkers
-    SharedMemory('detach', workersPid{worker}, paramCell{worker});
-    SharedMemory('free', workersPid{worker});
+    SharedMemory('free', workersPid{worker}, paramCell{worker});
 end
 
 

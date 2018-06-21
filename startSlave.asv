@@ -10,11 +10,19 @@ clc;
 masterPort = 9090;
 slavePort = 9091;
 slaveSocket = udp('Localhost', masterPort, 'LocalPort', slavePort);
+
 % Recover Shared Memory
-data = SharedMemory('attach', );
-param = SharedMemory();
+pid = num2str(feature('getPid'));
+fhandle = str2func(SharedMemory('attach', 'fhandle'));
+data = SharedMemory('attach', 'data');
+param = SharedMemory('attach', pid);
+workerResult = cell(1, length(param));
 % Evaluate Functions
+for p = 1:length(param)
+    workerResult{p} = feval(fhandle, data{1}, data{2}, param{p});
+end
 % Write results in SharedMemory
+SharedMemory('cl');
 % Inform Master the Slave status
 % Detach SharedMemroy
 % Ready to terminate

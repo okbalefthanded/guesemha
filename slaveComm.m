@@ -8,9 +8,10 @@ while(flag)
     if(strcmp(slaveSocket.status,'closed'))
         fprintf('Opening slave socket\n');
         fopen(slaveSocket);
-        fprintf('writing data to socket \n');
-        fprintf(slaveSocket, '%d', feature('getPid'));        
-        %     fopen(slaveSocket);
+        fprintf(slaveSocket, '%d', feature('getPid'));
+        
+        
+        fprintf('writing data to socket \n');                
     else
         fprintf('Closing slave socket\n');
         fclose(slaveSocket);
