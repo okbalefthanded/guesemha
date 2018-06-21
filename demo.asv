@@ -1,9 +1,0 @@
-load iris_dataset
-x = irisInputs';
-[y, ~] = find(irisTargets);
-% parameterCell = {{y, x, '-s 0 -t 0 -c 1 -v 5'},...
-%                  {y, x, '-s 0 -t 1 -d 3 -g 1 -r 2 -c 2  -v 5'},...
-%                  {y, x, '-s 0 -t 2 -g 2 -c 3 -v 5'},...
-%                  {y, x, '-s 0 -t 3 -g 3 -r 3 -c 4 -v 5'}};
-Data = {y, x};
-SharedMemory('clone', 'shared_mem', Data);

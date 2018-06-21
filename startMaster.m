@@ -6,23 +6,26 @@ function [resultCell] = startMaster(varargin)
 % last modification -- -- --
 % Okba Bekhelifi, <okba.bekhelif@univ-usto.dz>
 
-if(naragin < 3)
+if(nargin < 3)
     error('Not enough input arguments');
 end
 
 if(nargin < 4)
     % Default settings
     settings.isWorker = false;
-    settings.nWorkers = feature('numCores');
+    settings.nWorkers = feature('numCores') - 1;    
 else
-    fHandle = varargin{1};
-    dataCell = varargin{2};
-    paramCell = varargin{3};
     settings = varargin{4};
 end
 
+fHandle = varargin{1};
+dataCell = varargin{2};
+paramCell = varargin{3};
+
+fprintf('Workers to launch: %d\n', settings.nWorkers);
 % launch workers
 workersPid = launchWorkers(settings.nWorkers);
+disp({'Workers launched: ', workersPid{:}});
 %
 resultCell = cell(1, settings.nWorkers);
 isMasterOn = 1;
@@ -44,8 +47,9 @@ SharedMemory('clone', 'fhandle', fHandle);
 % generate SharedMemory data
 SharedMemory('clone', 'data', dataCell);
 % generate SharedMemory params
+
 for worker = 1:settings.nWorkers
-    SharedMemory('clone', workersPid{worker}, paramCell{worker});
+    SharedMemory('clone', workersPid{worker}, paramCell{worker})
 end
 
 % Send start command
