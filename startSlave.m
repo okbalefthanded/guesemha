@@ -52,6 +52,7 @@ fprintf('Worker %s Writing results in sharedMemory\n', pid);
 resKey = ['res_' pid];
 fprintf('Worker %s shared result key %s\n', pid, resKey);
 SharedMemory('clone', resKey, workerResult)
+
 % Inform Master the Slave status, send pid to indicate worker is done.
 flag = 1;
 while(flag)
@@ -66,6 +67,7 @@ while(flag)
         flag = 0;
     end
 end
+
 % wait for Master order to terminate
 % free
 % SharedMemory('detach', resKey, workerResult);
