@@ -38,9 +38,9 @@ for channel=1:settings.nWorkers
     % masterSocket = udp('Localhost', slavePort, 'LocalPort', masterPort);
     fprintf('Creating a comm channel on port: %d\n', slavePorts(channel));
     commChannels{channel} = udp('Localhost', slavePorts(channel),....
-                                'LocalPort', masterPorts(channel));
-    commChannels{channel}.ReadAsyncMode = 'continuous';
-    
+        'LocalPort', masterPorts(channel));
+    fopen(commChannels{channel});
+    %     commChannels{channel}.ReadAsyncMode = 'continuous';
 end
 
 % if(strcmp(masterSocket.status,'closed'))
@@ -75,45 +75,48 @@ processStat = zeros(1, settings.nWorkers);
 flag = 1;
 resKeys = [];
 % master loop
-while(isMasterOn && isSlavesOn)
-
+while(isMasterOn || isSlavesOn)
+    
     % evaluate if isWorker
-    if(settings.isWorker && workersDone==settings.nWorkers)
+    if(settings.isWorker && isMasterOn)
         fprintf('Master is worker, evaluating job.\n');
         masterResult = cell(1, length(paramCell{1}));
         for evaluation = 1:length(paramCell{1})
-            masterResult{evaluation} = feval(fHandle, dataCell{1, evaluation}, paramCell{1, evaluation});
+            masterResult{evaluation} = feval(fHandle, dataCell{1},dataCell{2}, paramCell{1, evaluation});
         end
+        isMasterOn = 0;
+        fprintf('...Master''s job is done...\n');         
     end
-    pause(2);
+    
+    %     pause(2);
     % collect results
     %     while(flag)
     for channel=1:settings.nWorkers
         %             fprintf('process stats: %d\n', processStat);
         disp(['process stats: ' num2str(processStat)]);
         if(processStat(channel))
-%             fprintf('process at %d can be terminated\n', sorted(channel));
+            %             fprintf('process at %d can be terminated\n', sorted(channel));
             break;
         end
-        if(strcmp(commChannels{channel}.status,'closed'))
-            %             if(strcmp(masterSocket.status,'closed'))
-            %                 fprintf('Opening Master socket.\n');
-            %                 fopen(masterSocket);
-            fprintf('-Channel remote port: %d\n', commChannels{channel}.propinfo.RemotePort.DefaultValue);
-            fprintf('-Opening communication channel on port: %d\n', slavePorts(channel));
-            fprintf('-Waiting for worker %d to finish Job ---\n', sorted(channel));
-            fopen(commChannels{channel});
-        end
+        %         if(strcmp(commChannels{channel}.status,'closed'))
+        %             %             if(strcmp(masterSocket.status,'closed'))
+        %             %                 fprintf('Opening Master socket.\n');
+        %             %                 fopen(masterSocket);
+        %             fprintf('-Channel remote port: %d\n', commChannels{channel}.propinfo.RemotePort.DefaultValue);
+        %             fprintf('-Opening communication channel on port: %d\n', slavePorts(channel));
+        %             fprintf('-Waiting for worker %d to finish Job ---\n', sorted(channel));
+        %             fopen(commChannels{channel});
+        %         end
         %             tmp = fscanf(masterSocket, '%d');
         %             fclose(masterSocket);
         %         while get(commChannels{channel},'BytesAvailable')==0      % loop untile receive something
         %             tmp=fscanf(commChannels{channel});     % listen to port
         %         end
         tmp = fscanf(commChannels{channel}, '%d');
-        fprintf('--values received %d on port %d finished job\n',commChannels{channel}.ValuesReceived, slavePorts(channel));
-        fprintf('--Data recieved %d on port %d finished job\n', tmp, slavePorts(channel));
-        fclose(commChannels{channel});
-        fprintf('--Closing communication channel on port: %d\n', slavePorts(channel));
+        fprintf('--values received %d on port %d \n',commChannels{channel}.ValuesReceived, slavePorts(channel));
+        fprintf('--Data recieved %d on port %d \n', tmp, slavePorts(channel));
+        %         fclose(commChannels{channel});
+%         fprintf('--Closing communication channel on port: %d\n', slavePorts(channel));
         if(~isempty(tmp))
             fprintf('---Worker %d finished job\n', tmp);
             %                 fprintf('Data recieved %d on port %d finished job\n', tmp, slavePorts(channel));
@@ -127,6 +130,7 @@ while(isMasterOn && isSlavesOn)
             fprintf('---Collecting results from worker: %d \n', sorted(worker));
             fprintf('---Attaching worker %d with key %s \n', sorted(worker), resKey);
             % resultCell{worker} = SharedMemory('attach', resKey);
+            fprintf(commChannels{channel},'%d', 1);
             receivedData = [receivedData, tmp];
             disp(['---receivedData : ' num2str(receivedData)]);
             if (length(receivedData)==settings.nWorkers)
@@ -136,9 +140,10 @@ while(isMasterOn && isSlavesOn)
                 flag = 0;
             end
         else
-            fprintf('did not receive packet: Lost or unwritten\n');
+            fprintf('did not receive packet: Lost or unwritten (Timeout)\n');
+            %             fprintf(commChannels{channel},'%d', 0);
         end
-        
+        %         fclose(commChannels{channel});
     end
     disp(['process stats: ' num2str(processStat)]);
     %     end
@@ -160,11 +165,19 @@ while(isMasterOn && isSlavesOn)
     if(workersDone == settings.nWorkers)
         %         terminateSlaves;
         isSlavesOn = 0;
+        if(~settings.isWorker)
+            isMasterOn = 0;
+        end
+        for channel=1:workersDone
+            fclose(commChannels{channel});
+            delete(commChannels{channel});
+        end
     end
 end
 % fclose(masterSocket);
 fclose('all');
-delete(commChannels);
+delete('all');
+% delete(commChannels);
 fprintf('Master freeing Shared memory.\n');
 % free SharedMemory fhandle
 % SharedMemory('detach', 'shared_fhandle', fHandle);

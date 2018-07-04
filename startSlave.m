@@ -5,9 +5,6 @@ function [] = startSlave
 % last modification -- -- --
 % Okba Bekhelifi, <okba.bekhelif@univ-usto.dz>
 clc;
-
-%
-
 % Recover Shared Memory
 fprintf('Recovering shared memory.\n');
 % pid = num2str(feature('getPid'));
@@ -23,8 +20,8 @@ slavePorts = 9191:9191+nWorkers;
 % slaveSocket = udp('Localhost', masterPort, 'LocalPort', slavePort);
 fprintf('Worker %d Opening communication channel on port: %d\n', feature('getPid'), slavePorts(workerRank));
 slaveSocket = udp('Localhost', masterPorts(workerRank), ...
-                  'LocalPort', slavePorts(workerRank));
-
+    'LocalPort', slavePorts(workerRank));
+fopen(slaveSocket);
 % a pause to wait for master to write in SharedMemory
 % pause(0.3);
 
@@ -38,13 +35,13 @@ workerResult = cell(1, length(param));
 
 % Evaluate Functions
 fprintf('Worker %s Evaluating job\n', pid);
-
+fprintf('Evaluatating function: %s\n', fhandle);
 % disp(param{:});
 for p = 1:length(param)
     workerResult{p} = feval(str2func(fhandle), data{1}, data{2}, param{p});
 end
-workerResult{1}
-workerResult{2}
+% workerResult{1}
+% workerResult{2}
 % Detach SharedMemroy
 fprintf('Worker %s Detaching sharedMemory\n', pid);
 SharedMemory('detach', 'shared_fhandle', fhandle);
@@ -67,27 +64,16 @@ SharedMemory('clone', resKey, workerResult)
 % while(flag)
 %     if(strcmp(slaveSocket.status,'closed'))
 %         fopen(slaveSocket);
-%         fprintf('Opening slave socket\n');
-%         fprintf('writing data to socket \n');
-%         fprintf(slaveSocket, '%d', feature('getPid'));
+fprintf('Opening slave socket\n');
+fprintf('writing data to socket \n');
+fprintf(slaveSocket, '%d', feature('getPid'));
+fprintf('Data sent : %d to %d\n', slaveSocket.ValuesSent, slaveSocket.propinfo.RemotePort.DefaultValue);
 %     else
-%         fprintf('Closing slave socket\n');
-%         fclose(slaveSocket);
-%         flag = 0;
+%             fprintf('Closing slave socket\n');
+%             fclose(slaveSocket);
 %     end
 % end
-
-if(strcmp(slaveSocket.status,'closed'))
-    fopen(slaveSocket);
-    fprintf('Opening slave socket\n');
-    fprintf('writing data to socket \n');
-    fprintf(slaveSocket, '%d', feature('getPid'));
-    fprintf('Data sent : %d to %d\n', slaveSocket.ValuesSent, slaveSocket.propinfo.RemotePort.DefaultValue); 
-else
-    fprintf('Closing slave socket\n');
-    fclose(slaveSocket);    
-end
-fclose(slaveSocket);    
+fclose(slaveSocket);
 delete(slaveSocket);
 % wait for Master order to terminate
 % free
