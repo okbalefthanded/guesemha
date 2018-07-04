@@ -17,12 +17,13 @@ nWorkers = length(getWorkersPids());
 % pid = num2str(find(sort(cellfun(@str2num, getWorkersPids()))==feature('getPid')));
 pid = num2str(workerRank);
 % Set IPC
-masterPort = 9090;
+masterPorts = 9091:9091+nWorkers;
 % slavePort = 9091;
-slavePorts = 9091:9091+nWorkers;
+slavePorts = 9191:9191+nWorkers;
 % slaveSocket = udp('Localhost', masterPort, 'LocalPort', slavePort);
 fprintf('Worker %d Opening communication channel on port: %d\n', feature('getPid'), slavePorts(workerRank));
-slaveSocket = udp('Localhost', masterPort, 'LocalPort', slavePorts(workerRank));
+slaveSocket = udp('Localhost', masterPorts(workerRank), ...
+                  'LocalPort', slavePorts(workerRank));
 
 % a pause to wait for master to write in SharedMemory
 % pause(0.3);
@@ -81,12 +82,13 @@ if(strcmp(slaveSocket.status,'closed'))
     fprintf('Opening slave socket\n');
     fprintf('writing data to socket \n');
     fprintf(slaveSocket, '%d', feature('getPid'));
-    fprintf('Data sent : %d from %d to %d\n',feature('getPid'), slaveSocket.propinfo.LocalPort.DefaultValue,...
-                                                               slaveSocket.propinfo.RemotePort.DefaultValue); 
+    fprintf('Data sent : %d to %d\n', slaveSocket.ValuesSent, slaveSocket.propinfo.RemotePort.DefaultValue); 
 else
     fprintf('Closing slave socket\n');
     fclose(slaveSocket);    
 end
+fclose(slaveSocket);    
+delete(slaveSocket);
 % wait for Master order to terminate
 % free
 % SharedMemory('detach', resKey, workerResult);

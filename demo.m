@@ -2,6 +2,10 @@
 % startMaster(fHandle, datacell, paramcell, settings)
 % load training data
 nworkers = 3;
+settings.isWorker = false;
+% settings.isWorker = true;
+% settings.nWorkers = feature('numCores') - 1;
+settings.nWorkers = nworkers;
 load iris_dataset
 x = irisInputs';
 [y, ~] = find(irisTargets);
@@ -23,5 +27,5 @@ for i=1:nworkers
     index = index + paramsplit;
 end
 %% start parallel
-res = startMaster(fHandle, datacell, paramcell);
-
+% res = startMaster(fHandle, datacell, paramcell);
+res = startMaster(fHandle, datacell, paramcell, settings);
