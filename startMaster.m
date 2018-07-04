@@ -29,8 +29,16 @@ workersDone = 0;
 
 % set IPC
 masterPort = 9090;
-slavePort = 9091;
-masterSocket = udp('Localhost', slavePort, 'LocalPort', masterPort);
+slavePorts = 9091:9091+settings.nWorkers;
+commChannels = cell(1, settings.nWorkers);
+
+for channel=1:settings.nWorkers
+    % masterSocket = udp('Localhost', slavePort, 'LocalPort', masterPort);
+    commChannels{channel} = udp('Localhost', slavePorts(channel),....
+                                'LocalPort', masterPort);
+    
+end
+
 % if(strcmp(masterSocket.status,'closed'))
 %     fprintf('Opening Master socket.\n');
 %     fopen(masterSocket);
@@ -51,7 +59,9 @@ end
 fprintf('Workers to launch: %d\n', settings.nWorkers);
 workersPid = launchWorkers(settings.nWorkers);
 disp({'Workers launched: ', workersPid{:}});
-
+sorted = sort(cellfun(@str2num, workersPid));
+disp(slavePorts);
+disp(sorted);
 % Send start command
 % fprintf(masterSocket, 'startworker');
 receivedData = [];
@@ -71,35 +81,42 @@ while(isMasterOn && isSlavesOn)
     
     % collect results
     while(flag)
-        if(strcmp(masterSocket.status,'closed'))
-            fprintf('Opening Master socket.\n');
-            fopen(masterSocket);
-        end
-        tmp = fscanf(masterSocket, '%d');
-        fclose(masterSocket);
-        if(~isempty(tmp))
-            fprintf('Worker %d finished job\n', tmp);
-            w = num2str(find(sort(cellfun(@str2num, workersPid))==tmp));
-            worker = find(cellfun(@str2num, workersPid)==tmp);
-            resKey = ['res_' w];
-            resKeys = [resKeys, resKey];
-            fprintf('Collecting results from worker: %s\n', workersPid{worker});
-            fprintf('Attaching worker %s with key %s\n', workersPid{worker}, resKey);
-            resultCell{worker} = SharedMemory('attach', resKey);
-            receivedData = [receivedData, tmp];
-            if (length(receivedData)==settings.nWorkers)
-                % all workers have finished their jobs
-                workersDone = settings.nWorkers;
-                fprintf('All workers have finished their jobs.\n');
-                %                 for worker = 1:settings.nWorkers
-                %                     fprintf('Collecting results from worker: %s\n', workersPid{worker});
-                %                     resKey = ['res_' num2str(worker)];
-                %                     fprintf('Attaching worker %s with key %s\n', workersPid{worker}, resKey);
-                %                     resultCell{worker} = SharedMemory('attach', resKey);
-                %                     SharedMemory('detach', resKey, resultCell{worker});
-                %                     SharedMemory('free', resKey);
-                %                 end
-                flag = 0;
+        for channel=1:settings.nWorkers
+            if(strcmp(commChannels{channel}.status,'closed'))
+                %             if(strcmp(masterSocket.status,'closed'))
+                %                 fprintf('Opening Master socket.\n');
+                %                 fopen(masterSocket);
+                fprintf('Channel remote port: %d\n', commChannels{channel}.propinfo.RemotePort.DefaultValue);
+                fprintf('Opening communication channel on port: %d\n', slavePorts(channel));
+                fprintf('---Waiting for worker %d to finish Job ---\n', sorted(channel));
+                fopen(commChannels{channel});
+            end
+            %             tmp = fscanf(masterSocket, '%d');
+            %             fclose(masterSocket);
+            tmp = fscanf(commChannels{channel}, '%d');
+            fprintf('Data recieved %d on port %d finished job\n', tmp, slavePorts(channel)); 
+            fclose(commChannels{channel});
+            fprintf('Closing communication channel on port: %d\n', slavePorts(channel));
+            if(~isempty(tmp))
+                fprintf('Worker %d finished job\n', tmp); 
+%                 fprintf('Data recieved %d on port %d finished job\n', tmp, slavePorts(channel)); 
+                %                 w = num2str(find(sort(cellfun(@str2num, workersPid))==tmp));
+                %                 worker = find(sort(cellfun(@str2num, workersPid))==tmp);
+                worker = find(sorted==tmp);
+                w = num2str(worker);
+                resKey = ['res_' w];
+                resKeys = [resKeys, resKey];
+                fprintf('Collecting results from worker: %d \n', sorted(worker));
+                fprintf('Attaching worker %d with key %s \n', sorted(worker), resKey);
+                % resultCell{worker} = SharedMemory('attach', resKey);
+                receivedData = [receivedData, tmp];
+                if (length(receivedData)==settings.nWorkers)
+                    % all workers have finished their jobs
+                    workersDone = settings.nWorkers;
+                    fprintf('All workers have finished their jobs.\n');
+                    flag = 0;
+                end
+                
             end
         end
     end
