@@ -26,6 +26,10 @@ for i=1:nworkers
     paramcell{i} = tmp;
     index = index + paramsplit;
 end
+
 %% start parallel
 % res = startMaster(fHandle, datacell, paramcell);
-res = startMaster(fHandle, datacell, paramcell, settings);
+% global res not working
+[res, resKeys] = startMaster(fHandle, datacell, paramcell, settings);
+
+% detach and free Memory 

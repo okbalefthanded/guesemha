@@ -42,43 +42,49 @@ for p = 1:length(param)
 end
 % workerResult{1}
 % workerResult{2}
+
 % Detach SharedMemroy
 fprintf('Worker %s Detaching sharedMemory\n', pid);
 SharedMemory('detach', 'shared_fhandle', fhandle);
-SharedMemory('free', 'shared_fhandle');
+% SharedMemory('free', 'shared_fhandle');
 
 SharedMemory('detach', 'shared_data', data);
-SharedMemory('free', 'shared_data');
+% SharedMemory('free', 'shared_data');
 
 SharedMemory('detach', ['shared_' pid], param);
-SharedMemory('free', ['shared_' pid]);
-
+% SharedMemory('free', ['shared_' pid]);
+%
 % Write results in SharedMemory
 fprintf('Worker %s Writing results in sharedMemory\n', pid);
 resKey = ['res_' pid];
 fprintf('Worker %s shared result key %s\n', pid, resKey);
-SharedMemory('clone', resKey, workerResult)
+SharedMemory('clone', resKey, workerResult);
+% SharedMemory('clone', resKey, pid);
 
 % Inform Master the Slave status, send pid to indicate worker is done.
 % flag = 1;
 % while(flag)
 %     if(strcmp(slaveSocket.status,'closed'))
 %         fopen(slaveSocket);
+
 fprintf('Opening slave socket\n');
 fprintf('writing data to socket \n');
 fprintf(slaveSocket, '%d', feature('getPid'));
 fprintf('Data sent : %d to %d\n', slaveSocket.ValuesSent, slaveSocket.propinfo.RemotePort.DefaultValue);
+
 %     else
 %             fprintf('Closing slave socket\n');
 %             fclose(slaveSocket);
 %     end
 % end
+
 fclose(slaveSocket);
 delete(slaveSocket);
+
 % wait for Master order to terminate
 % free
 % SharedMemory('detach', resKey, workerResult);
 % SharedMemory('free', resKey);
 % Ready to terminate
-end
+% end
 
