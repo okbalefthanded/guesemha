@@ -12,7 +12,6 @@ x = irisInputs';
 [y, ~] = find(irisTargets);
 datacell = {y, x};
 fHandle = 'svmtrain';
-
 % generate param cell
 Cs = [0.001, 0.01, 0.1, 1, 10, 100];
 gammas = [0.001, 0.01, 0.1, 1, 10, 100];

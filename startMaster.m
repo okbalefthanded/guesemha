@@ -39,7 +39,7 @@ for channel=1:settings.nWorkers
     commChannels{channel} = udp('Localhost', slavePorts(channel),....
                                 'LocalPort', masterPorts(channel));
     fopen(commChannels{channel});
-
+    
 end
 
 fprintf('Generating Shared memory.\n');
@@ -76,63 +76,84 @@ while(isMasterOn || isSlavesOn)
         fprintf('Master is worker, evaluating job.\n');
         masterResult = cell(1, length(paramCell{1}));
         for evaluation = 1:length(paramCell{1})
-%             masterResult{evaluation} = feval(fHandle, dataCell{1},dataCell{2}, paramCell{1, evaluation});
-             masterResult{evaluation} = feval(fHandle, dataCell{:}, paramCell{1, evaluation});
-        end
+            % masterResult{evaluation} = feval(fHandle, dataCell{1},dataCell{2}, paramCell{1, evaluation});
+            % Master evaluate CV
+            if(isstruct(fHandle) && isstruct(dataCell))
+                nfolds = max(dataCell.fold);
+                acc_folds = zeros(1, nfolds);
+                for f=1:nfolds
+                    idx = dataCell.fold==f;
+                    train = ~idx;
+                    predidct = idx;
+                    dTrain = getSplit(dataCell.data, train);
+                    dPredict = getSplit(dataCell.data, predidct);
+                    masterModel  = feval(fHandle.tr, dTrain{:}, paramCell{1, evaluation});
+                    predFold = feval(fHandle.pr, dPredict{:}, masterModel);
+                    acc_folds(f) = getAccuracy(predFold, dPredict);
+                end                
+                masterResult{evaluation} = mean(acc_folds);
+            else
+                masterResult{evaluation} = feval(fHandle, dataCell{:}, paramCell{1, evaluation});
+            end
+        end        
         isMasterOn = 0;
         fprintf('...Master''s job is done...\n');
-    end
-
-    for channel=1:settings.nWorkers
-        %             fprintf('process stats: %d\n', processStat);
-        disp(['process stats: ' num2str(processStat)]);
-        if(processStat(channel))
-            %             fprintf('process at %d can be terminated\n', sorted(channel));
-            break;
+        %     end
+    else
+        if(exist('dataCell','var') && exist('fHandle','var') && exist('paramCell','var'))
+            clear dataCell fHandle paramCell
         end
-        tmp = fscanf(commChannels{channel}, '%d');
-        fprintf('--values received %d on port %d \n',commChannels{channel}.ValuesReceived, slavePorts(channel));
-        fprintf('--Data recieved %d on port %d \n', tmp, slavePorts(channel));
-        if(~isempty(tmp))
-            fprintf('---Worker %d finished job\n', tmp);           
-            worker = find(sorted==tmp);
-            w = num2str(worker);
-            processStat(channel) = 1;
-            resKey = ['res_' w];
-            resKeys{worker} = resKey;
-            fprintf('---Collecting results from worker: %d \n', sorted(worker));
-            fprintf('---Attaching worker %d with key %s \n', sorted(worker), resKey);            
-            resultCell{worker} = SharedMemory('attach', resKey);            
-            fprintf(commChannels{channel},'%d', 1);
-            receivedData = [receivedData, tmp];
-            disp(['---receivedData : ' num2str(receivedData)]);            
-            if (length(receivedData)==settings.nWorkers)
-                % all workers have finished their jobs
-                workersDone = settings.nWorkers;
-                fprintf('**All workers have finished their jobs**.\n');
-                flag = 0;
+        for channel=1:settings.nWorkers
+            %             fprintf('process stats: %d\n', processStat);
+            disp(['process stats: ' num2str(processStat)]);
+            if(processStat(channel))
+                %             fprintf('process at %d can be terminated\n', sorted(channel));
+                break;
             end
-        else
-            fprintf('did not receive packet: Lost or unwritten (Timeout)\n');
-            %             fprintf(commChannels{channel},'%d', 0);
+            tmp = fscanf(commChannels{channel}, '%d');
+            fprintf('--values received %d on port %d \n',commChannels{channel}.ValuesReceived, slavePorts(channel));
+            fprintf('--Data recieved %d on port %d \n', tmp, slavePorts(channel));
+            if(~isempty(tmp))
+                fprintf('---Worker %d finished job\n', tmp);
+                worker = find(sorted==tmp);
+                w = num2str(worker);
+                processStat(channel) = 1;
+                resKey = ['res_' w];
+                resKeys{worker} = resKey;
+                fprintf('---Collecting results from worker: %d \n', sorted(worker));
+                fprintf('---Attaching worker %d with key %s \n', sorted(worker), resKey);
+                resultCell{worker} = SharedMemory('attach', resKey);
+                fprintf(commChannels{channel},'%d', 1);
+                receivedData = [receivedData, tmp];
+                disp(['---receivedData : ' num2str(receivedData)]);
+                if (length(receivedData)==settings.nWorkers)
+                    % all workers have finished their jobs
+                    workersDone = settings.nWorkers;
+                    fprintf('**All workers have finished their jobs**.\n');
+                    flag = 0;
+                end
+            else
+                fprintf('did not receive packet: Lost or unwritten (Timeout)\n');
+                %             fprintf(commChannels{channel},'%d', 0);
+            end
+            %         fclose(commChannels{channel});
         end
-        %         fclose(commChannels{channel});
-    end
-    disp(['process stats: ' num2str(processStat)]);
-    %     end
-    % terminate workers if all jobs are done
-    if(workersDone == settings.nWorkers)
-        %         terminateSlaves;
-        isSlavesOn = 0;
-        if(~settings.isWorker)
-            isMasterOn = 0;
-            results = {resultCell,{}};
-        else
-            results = {resultCell, masterResult};
-        end
-        for channel=1:workersDone
-            fclose(commChannels{channel});
-            delete(commChannels{channel});
+        disp(['process stats: ' num2str(processStat)]);
+        %     end
+        % terminate workers if all jobs are done
+        if(workersDone == settings.nWorkers)
+            %         terminateSlaves;
+            isSlavesOn = 0;
+            if(~settings.isWorker)
+                isMasterOn = 0;
+                results = {resultCell,{}};
+            else
+                results = {resultCell, masterResult};
+            end
+            for channel=1:workersDone
+                fclose(commChannels{channel});
+                delete(commChannels{channel});
+            end
         end
     end
 end
@@ -149,7 +170,23 @@ SharedMemory('free', 'shared_data');
 
 % % free SharedMemory params
 for worker = 1:settings.nWorkers
-   SharedMemory('free', ['shared_' num2str(worker)]);
+    SharedMemory('free', ['shared_' num2str(worker)]);
 end
 
+end
+
+function d = getSplit(d, id)
+d{1} = d{1}(id, :); 
+d{2} = d{2}(id, :); 
+end
+
+function acc = getAccuracy(predFold, data)
+if(size(data{1}, 2) > size(data{2}, 2))
+    % Label data in second cell
+   i = 2;
+else
+   i = 1;
+end
+ acc = (sum(data{i}==predFold) / length(data{i})) * 100;
+end
 
