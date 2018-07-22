@@ -1,12 +1,9 @@
 %% Okba Bekhelifi, <okba.bekhelif@univ-usto.dz> 07-18-2018
-% startMaster(fHandle, datacell, paramcell, settings)
-% load training data
-
+% workers settings
 nworkers = 3;
-% settings.isWorker = false;
 settings.isWorker = true;
-% settings.nWorkers = feature('numCores') - 1;
 settings.nWorkers = nworkers;
+% load training data
 load iris_dataset
 x = irisInputs';
 [y, ~] = find(irisTargets);
@@ -20,8 +17,6 @@ folds = bsxfun(@times, repmat(ones(1,N), 1, nfolds), ... ,
 folds = sort(folds(1:setsize));
 datacell.fold = folds;
 % Train & Predict functions
-% fHandle.train = 'svmtrain';
-% fHandle.predict = 'svmpredict';
 % SharedMatrix bug, fieldnames should have same length
 fHandle.tr = 'svmtrain';
 fHandle.pr = 'svmpredict';
@@ -42,6 +37,9 @@ end
 %% start parallel CV
 [res, resKeys] = startMaster(fHandle, datacell, paramcell, settings);
 % Do something with res
+
 % detach Memory
-SharedMemory('detach', resKeys{1}, res);
+SharedMemory('detach', resKeys, res);
+% kill slaves processes
+terminateSlaves;
   

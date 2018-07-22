@@ -1,11 +1,8 @@
 %% Okba Bekhelifi, <okba.bekhelif@univ-usto.dz> 06-21-2018
-% startMaster(fHandle, datacell, paramcell, settings)
 % load training data
 
 nworkers = 3;
-% settings.isWorker = false;
 settings.isWorker = true;
-% settings.nWorkers = feature('numCores') - 1;
 settings.nWorkers = nworkers;
 load iris_dataset
 x = irisInputs';
@@ -28,10 +25,8 @@ for i=1:nworkers
 end
 
 %% start parallel
-% res = startMaster(fHandle, datacell, paramcell);
-% global res not working
 [res, resKeys] = startMaster(fHandle, datacell, paramcell, settings);
 % Do something with res
 % detach Memory
 SharedMemory('detach', resKeys{1}, res);
- 
+terminateSlaves; 

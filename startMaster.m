@@ -1,5 +1,4 @@
-%function [ resultCell ] = startMaster(fHandle, datacell, paramcell, settings)
-function [results, resKeys] = startMaster(varargin)
+function [results, key] = startMaster(varargin)
 %STARTMASTER Summary of this function goes here
 %   Detailed explanation goes here
 % created 06-20-2018
@@ -34,7 +33,6 @@ slavePorts = 9191:9191+settings.nWorkers-1;
 commChannels = cell(1, settings.nWorkers);
 
 for channel=1:settings.nWorkers
-    % masterSocket = udp('Localhost', slavePort, 'LocalPort', masterPort);
     fprintf('Creating a comm channel on port: %d\n', slavePorts(channel));
     commChannels{channel} = udp('Localhost', slavePorts(channel),....
                                 'LocalPort', masterPorts(channel));
@@ -49,7 +47,6 @@ SharedMemory('clone', 'shared_fhandle', fHandle);
 SharedMemory('clone', 'shared_data', dataCell);
 % generate SharedMemory params
 for worker = 1:settings.nWorkers
-    %     SharedMemory('clone', workersPid{worker}, paramCell{worker})
     SharedMemory('clone', ['shared_' num2str(worker)], paramCell{worker});
 end
 
@@ -62,21 +59,17 @@ disp(masterPorts);
 disp(slavePorts);
 disp(sorted);
 
-% Send start command
-% fprintf(masterSocket, 'startworker');
 receivedData = [];
 processStat = zeros(1, settings.nWorkers);
-flag = 1;
 resKeys = cell(1, settings.nWorkers);
+
 % master loop
-while(isMasterOn || isSlavesOn)
-    
+while(isMasterOn || isSlavesOn)    
     % evaluate if isWorker
     if(settings.isWorker && isMasterOn)
         fprintf('Master is worker, evaluating job.\n');
         masterResult = cell(1, length(paramCell{1}));
         for evaluation = 1:length(paramCell{1})
-            % masterResult{evaluation} = feval(fHandle, dataCell{1},dataCell{2}, paramCell{1, evaluation});
             % Master evaluate CV
             if(isstruct(fHandle) && isstruct(dataCell))
                 nfolds = max(dataCell.fold);
@@ -98,16 +91,13 @@ while(isMasterOn || isSlavesOn)
         end        
         isMasterOn = 0;
         fprintf('...Master''s job is done...\n');
-        %     end
     else
         if(exist('dataCell','var') && exist('fHandle','var') && exist('paramCell','var'))
             clear dataCell fHandle paramCell
         end
         for channel=1:settings.nWorkers
-            %             fprintf('process stats: %d\n', processStat);
             disp(['process stats: ' num2str(processStat)]);
             if(processStat(channel))
-                %             fprintf('process at %d can be terminated\n', sorted(channel));
                 break;
             end
             tmp = fscanf(commChannels{channel}, '%d');
@@ -130,17 +120,12 @@ while(isMasterOn || isSlavesOn)
                     % all workers have finished their jobs
                     workersDone = settings.nWorkers;
                     fprintf('**All workers have finished their jobs**.\n');
-                    flag = 0;
                 end
             else
                 fprintf('did not receive packet: Lost or unwritten (Timeout)\n');
-                %             fprintf(commChannels{channel},'%d', 0);
             end
-            %         fclose(commChannels{channel});
         end
         disp(['process stats: ' num2str(processStat)]);
-        %     end
-        % terminate workers if all jobs are done
         if(workersDone == settings.nWorkers)
             %         terminateSlaves;
             isSlavesOn = 0;
@@ -157,22 +142,20 @@ while(isMasterOn || isSlavesOn)
         end
     end
 end
-% fclose(masterSocket);
+
 fclose('all');
 delete('all');
-% delete(commChannels);
 
 fprintf('Master freeing Shared memory.\n');
 % free SharedMemory fhandle
 SharedMemory('free', 'shared_fhandle');
 % free SharedMemory data
 SharedMemory('free', 'shared_data');
-
-% % free SharedMemory params
+% free SharedMemory params
 for worker = 1:settings.nWorkers
     SharedMemory('free', ['shared_' num2str(worker)]);
 end
-
+key = resKeys{1};
 end
 
 function d = getSplit(d, id)
