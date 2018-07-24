@@ -40,6 +40,6 @@ end
 
 % detach Memory
 SharedMemory('detach', resKeys, res);
-% kill slaves processes
-terminateSlaves;
-  
+% % kill slaves processes
+% terminateSlaves;
+%   

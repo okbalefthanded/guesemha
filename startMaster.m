@@ -62,7 +62,7 @@ disp(sorted);
 receivedData = [];
 processStat = zeros(1, settings.nWorkers);
 resKeys = cell(1, settings.nWorkers);
-
+inputsAreStructs = isstruct(fHandle) && isstruct(dataCell);
 % master loop
 while(isMasterOn || isSlavesOn)    
     % evaluate if isWorker
@@ -71,21 +71,24 @@ while(isMasterOn || isSlavesOn)
         masterResult = cell(1, length(paramCell{1}));
         for evaluation = 1:length(paramCell{1})
             % Master evaluate CV
-            if(isstruct(fHandle) && isstruct(dataCell))
+             if(inputsAreStructs)
                 nfolds = max(dataCell.fold);
                 acc_folds = zeros(1, nfolds);
                 for f=1:nfolds
                     idx = dataCell.fold==f;
                     train = ~idx;
-                    predidct = idx;
-                    dTrain = getSplit(dataCell.data, train);
-                    dPredict = getSplit(dataCell.data, predidct);
-                    masterModel  = feval(fHandle.tr, dTrain{:}, paramCell{1, evaluation});
-                    predFold = feval(fHandle.pr, dPredict{:}, masterModel);
-                    acc_folds(f) = getAccuracy(predFold, dPredict);
+                    predict = idx;
+                    af = eval_fold(fHandle, ...
+                                   dataCell.data, ...
+                                   paramCell{1}{evaluation}, ...
+                                   train, ...
+                                   predict...
+                                   );
+                    acc_folds(f) = af;
                 end                
                 masterResult{evaluation} = mean(acc_folds);
             else
+                % TODO
                 masterResult{evaluation} = feval(fHandle, dataCell{:}, paramCell{1, evaluation});
             end
         end        
@@ -93,7 +96,7 @@ while(isMasterOn || isSlavesOn)
         fprintf('...Master''s job is done...\n');
     else
         if(exist('dataCell','var') && exist('fHandle','var') && exist('paramCell','var'))
-            clear dataCell fHandle paramCell
+            clear dataCell fhandle paramCell
         end
         for channel=1:settings.nWorkers
             disp(['process stats: ' num2str(processStat)]);
@@ -158,18 +161,40 @@ end
 key = resKeys{1};
 end
 
+function af = eval_fold(fHandle, data, param, trainIdx, predictIdx)
+dTrain = getSplit(data, trainIdx);
+dPredict = getSplit(data, predictIdx);
+if(isstruct(data))    
+    masterModel  = feval(fHandle.tr, dTrain, param{:});
+    predFold = feval(fHandle.pr, dPredict, masterModel);
+else    
+    masterModel  = feval(fHandle.tr, dTrain{:}, param);
+    predFold = feval(fHandle.pr, dPredict{:}, masterModel);
+end
+ af = getAccuracy(predFold, dPredict);
+end
+
 function d = getSplit(d, id)
-d{1} = d{1}(id, :); 
-d{2} = d{2}(id, :); 
+if(isstruct(d))
+    d.x = d.x(id, :); 
+    d.y = d.y(id, :);
+else
+    d{1} = d{1}(id, :);
+    d{2} = d{2}(id, :);
+end
 end
 
 function acc = getAccuracy(predFold, data)
-if(size(data{1}, 2) > size(data{2}, 2))
-    % Label data in second cell
-   i = 2;
+if(iscell(data))
+    if(size(data{1}, 2) > size(data{2}, 2))
+        % Label data in second cell
+        i = 2;
+    else
+        i = 1;
+    end
+    acc = (sum(data{i}==predFold) / length(data{i})) * 100;
 else
-   i = 1;
+    acc = (sum(data.y==predFold.y) / length(data.y)) * 100;
 end
- acc = (sum(data{i}==predFold) / length(data{i})) * 100;
 end
 

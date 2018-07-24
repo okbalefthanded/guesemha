@@ -87,11 +87,12 @@ typedef struct mxArray_tag Internal_mxArray;					/* mxArray_tag defined in "mex.
 #include "matrix.h"
 #include "mex.h"
 
+//added line
+#define BOOST_DATE_TIME_NO_LIB 
 /* inbuilt libs */
 #include "SharedMemStack.hpp"
 
-//added line
-#define BOOST_DATE_TIME_NO_LIB 
+
 #include <boost/interprocess/shared_memory_object.hpp>			   /* Prefer this but get permission errors sadly */
 #include <boost/interprocess/windows_shared_memory.hpp>			   /* Have to ensure one windows_shared_memory object is attached to the memory, or else the memory is free'd */
 #include <boost/interprocess/mapped_region.hpp>
@@ -170,7 +171,7 @@ struct mxArray_tag {
 			void  *pdata;
 			void  *pimag_data;
 			void  *reserved5;
-			size_t reserved6[3];
+			size_t reserved6[3];			
 		}   number_array;
 	}   data;
 };

@@ -138,6 +138,7 @@ void mexFunction( int nlhs,       mxArray *plhs[],
 		/* scan input data */
 		sm_size = deepscan(&hdr, &dat, mxInput, NULL);
 
+		//mexPrintf("[mexFunction] (directive: clone) sm_size %d\n", sm_size);
 		#ifdef DEBUG
 		mexPrintf("clone: Debug: deepscan done.\n");
 		#endif
@@ -675,6 +676,7 @@ size_t deepscan(header_t *hdr, data_t *dat, const mxArray* mxInput, header_t*  p
 
 		/* How many fields to work with? */
 		hdr->nFields = mxGetNumberOfFields(mxInput);
+		//mexPrintf("[deepscan] hdr->nFields %d\n", hdr->nFields);
 
 		/* Find the size required to store the field names */
 		strBytes = FieldNamesSize(mxInput);     /* always a multiple of alignment size */
@@ -684,8 +686,9 @@ size_t deepscan(header_t *hdr, data_t *dat, const mxArray* mxInput, header_t*  p
 		dat->child_hdr = (header_t*)mxCalloc(hdr->nzmax * hdr->nFields * (sizeof(header_t) + 
 			sizeof(data_t)) + strBytes, 1); /* extra space for the field string */
 		dat->child_dat = (data_t*)&dat->child_hdr[hdr->nFields * hdr->nzmax];
+		//mexPrintf("[deepscan] child_dat %s\n", dat->child_dat);
 		dat->field_str = (char*)&dat->child_dat[hdr->nFields * hdr->nzmax];
-
+		//mexPrintf("[deepscan] field_str %s\n", dat->field_str);
 		/* make a record of the field names */
 		CopyFieldNames(mxInput, dat->field_str);
 
@@ -721,7 +724,7 @@ size_t deepscan(header_t *hdr, data_t *dat, const mxArray* mxInput, header_t*  p
 			#ifdef DEBUG
 			mexPrintf("deepscan: Debug: finished %d.\n",i);
 			#endif
-		}
+		}	
 		
 		/* if its a cell it has to have at least one mom-empty element */
 		if ( hdr->shmsiz==(1+hdr->nzmax)*sizeof(header_t) )
@@ -809,6 +812,7 @@ void deepcopy(header_t *hdr, data_t *dat, char *shm, header_t*  par_hdr) {
 		#endif
 
 		/* place the field names next in shared memory */
+		// mexPrintf("[deepcopy] field_str '%s' nFileds (%d) strbytes '%s' **\n",dat->field_str, nFields, strBytes);
 		ret = NumFieldsFromString(dat->field_str, &nFields, &strBytes);
 
 		/* check the recovery */
@@ -1026,8 +1030,10 @@ int NumFieldsFromString(const char* pString, size_t *pFields, size_t* pBytes)
 	while (!term_found)
 	{
 		/* scan past null termination chars */
+		// mexPrintf("[NumFieldsFromString] (outsideloop)  counter i==%d\n", i);
 		while (!pString[i])
-		{	i++;		 }
+		{	//mexPrintf("[NumFieldsFromString] pString %s counter i==%d\n", pString[i], i);
+			i++;		 }
 
 		/* is this the special termination character? */
 		term_found = pString[i] == term_char;
@@ -1051,15 +1057,19 @@ int NumFieldsFromString(const char* pString, size_t *pFields, size_t* pBytes)
 
 		}
 	}
+	//mexPrintf("[NumFieldsFromString] counter i==%d\n", i);
 	pBytes[0] = i;
 
 	/* return the aligned size */
 	pBytes[0] = pad_to_align(pBytes[0]);
-
+	//mexPrintf("[NumFieldsFromString] last pBytes[0] %d\n", pBytes[0]);
 	/* Check what's recovered matches the stored length */
+	//mexPrintf("[NumFieldsFromString] last pString %s\n", pString);
 	stored_length = *(unsigned int*)&pString[pBytes[0]] ;	  /* the recorded length of the string */
 	pBytes[0] += align_size;								  /* add the extra space for the record */
 
+	//mexPrintf("[NumFieldsFromString] stored_length ==%d\n", stored_length);
+	//mexPrintf("[NumFieldsFromString] pBytes ==%d\n-------\n", pBytes[0]);
 	/* Check on it */
 	if (stored_length != pBytes[0])
 		return -3;
