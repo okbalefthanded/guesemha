@@ -89,7 +89,9 @@ while(isMasterOn || isSlavesOn)
                 masterResult{evaluation} = mean(acc_folds);
             else
                 % TODO
-                masterResult{evaluation} = feval(fHandle, dataCell{:}, paramCell{1, evaluation});
+                masterResult{evaluation} = feval(fHandle, ...
+                                                 dataCell{:}, ...
+                                                 paramCell{1, evaluation});
             end
         end        
         isMasterOn = 0;

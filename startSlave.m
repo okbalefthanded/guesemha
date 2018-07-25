@@ -41,9 +41,9 @@ else
     % Train only mode
     mode = 'single';
 end
-
+fprintf('mode is %s\n', mode);
 for p=1:length(param)
-    if(strcmp(mode, 'single'))
+    if(strcmp(mode, 'single'))        
         workerResult{p} = feval(fHandle, datacell{:}, param{p});
     else
         if(strcmp(mode, 'double'))
@@ -91,12 +91,12 @@ fclose(slaveSocket);
 delete(slaveSocket);
 end
 
-function af = eval_fold(fdle, data, param, trainIdx, predictIdx)
+function af = eval_fold(fhandle, data, param, trainIdx, predictIdx)
 dTrain = getSplit(data, trainIdx);
 dPredict = getSplit(data, predictIdx);
 if(isstruct(data))  
-    slaveModel  = feval(fdle.tr, dTrain, param{:});
-    predFold = feval(fdle.pr, dPredict, slaveModel);
+    slaveModel  = feval(fhandle.tr, dTrain, param{:});
+    predFold = feval(fhandle.pr, dPredict, slaveModel);
 else    
     slaveModel  = feval(fhandle.tr, dTrain{:}, param);
     predFold = feval(fhandle.pr, dPredict{:}, slaveModel);

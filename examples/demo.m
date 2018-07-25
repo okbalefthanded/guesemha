@@ -28,5 +28,5 @@ end
 [res, resKeys] = startMaster(fHandle, datacell, paramcell, settings);
 % Do something with res
 % detach Memory
-SharedMemory('detach', resKeys{1}, res);
+SharedMemory('detach', resKeys, res);
 terminateSlaves; 
