@@ -11,7 +11,7 @@ end
 
 if(nargin < 4)
     % Default settings
-    settings.isWorker = false;
+    settings.isWorker = 0;
     settings.nWorkers = feature('numCores') - 1;
 else
     settings = varargin{4};
@@ -22,7 +22,7 @@ dataCell = varargin{2};
 paramCell = varargin{3};
 
 resultCell = cell(1, settings.nWorkers);
-results = cell(1,settings.nWorkers + 1);
+results = cell(1,settings.nWorkers + settings.isWorker);
 isMasterOn = 1;
 isSlavesOn = 1;
 workersDone = 0;
@@ -46,8 +46,9 @@ SharedMemory('clone', 'shared_fhandle', fHandle);
 % generate SharedMemory data
 SharedMemory('clone', 'shared_data', dataCell);
 % generate SharedMemory params
+
 for worker = 1:settings.nWorkers
-    SharedMemory('clone', ['shared_' num2str(worker)], paramCell{worker});
+    SharedMemory('clone', ['shared_' num2str(worker)], paramCell{worker+settings.isWorker});
 end
 
 % launch workers
@@ -136,9 +137,9 @@ while(isMasterOn || isSlavesOn)
             isSlavesOn = 0;
             if(~settings.isWorker)
                 isMasterOn = 0;
-                results = {resultCell,{}};
+                results = resultCell;
             else
-                results = {resultCell, masterResult};
+                results = {masterResult, resultCell};
             end
             for channel=1:workersDone
                 fclose(commChannels{channel});

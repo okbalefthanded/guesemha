@@ -41,7 +41,7 @@ else
     % Train only mode
     mode = 'single';
 end
-fprintf('mode is %s\n', mode);
+
 for p=1:length(param)
     if(strcmp(mode, 'single'))        
         workerResult{p} = feval(fHandle, datacell{:}, param{p});
