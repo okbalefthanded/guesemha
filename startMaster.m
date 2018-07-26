@@ -64,13 +64,14 @@ receivedData = [];
 processStat = zeros(1, settings.nWorkers);
 resKeys = cell(1, settings.nWorkers);
 inputsAreStructs = isstruct(fHandle) && isstruct(dataCell);
+nEvaluations = length(paramCell{1});
 % master loop
 while(isMasterOn || isSlavesOn)    
     % evaluate if isWorker
     if(settings.isWorker && isMasterOn)
         fprintf('Master is worker, evaluating job.\n');
-        masterResult = cell(1, length(paramCell{1}));
-        for evaluation = 1:length(paramCell{1})
+        masterResult = cell(1, nEvaluations);
+        for evaluation = 1:nEvaluations
             % Master evaluate CV
              if(inputsAreStructs)
                 nfolds = max(dataCell.fold);
@@ -92,7 +93,7 @@ while(isMasterOn || isSlavesOn)
                 % TODO
                 masterResult{evaluation} = feval(fHandle, ...
                                                  dataCell{:}, ...
-                                                 paramCell{1, evaluation});
+                                                 paramCell{1}{evaluation});
             end
         end        
         isMasterOn = 0;

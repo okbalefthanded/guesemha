@@ -66,7 +66,6 @@ for p=1:length(param)
         end
     end
 end
-
 % Detach SharedMemroy
 fprintf('Worker %s Detaching sharedMemory\n', pid);
 SharedMemory('detach', 'shared_fhandle', fHandle);
