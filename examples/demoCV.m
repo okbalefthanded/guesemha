@@ -28,18 +28,7 @@ gammas = 0:0.01:2;
 nWorkers = settings.nWorkers + settings.isWorker;
 paramcell = cell(1, nWorkers);
 searchSpace = length(Cs)*length(gammas);
-offset = 0;
-if(searchSpace <= nWorkers)
-    nWorkers = searchSpace;
-    paramsplit = 1;
-else if(mod(searchSpace, nWorkers)==0)
-        paramsplit = searchSpace / nWorkers;
-        
-    else
-        paramsplit = floor(searchSpace / nWorkers);
-        offset = mod(searchSpace, nWorkers);
-    end
-end
+[nWorkers, paramsplit, offset] = getRessources(settings, searchSpace);
 m = 1;
 n = 1;
 off = 0;
@@ -61,25 +50,8 @@ end
 %% start parallel CV
 [res, resKeys] = startMaster(fHandle, datacell, paramcell, settings);
 % Do something with res
-q = [res{1}{:}, res{2}{:}];
-[v,i] = max(cell2mat(q));
-in = 1;
-flag =0;
-for p=1:length(paramcell)
-    for r = 1:length(paramcell{p})
-        if(in==i)
-            %             id = [p, r];
-            flag = 1;
-            break;
-        else
-            in = in+ 1;
-        end
-    end
-    if(flag)
-        break;
-    end
-end
-best_param = paramcell{p}{r};
+[best_worker, best_evaluation] = getBestParamIdx(res, paramcell);
+best_param = paramcell{best_worker}{best_evaluation};
 % detach Memory
 SharedMemory('detach', resKeys, res);
 toc;

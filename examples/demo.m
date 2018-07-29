@@ -1,6 +1,6 @@
 %% Okba Bekhelifi, <okba.bekhelif@univ-usto.dz> 06-21-2018
 % load training data
-
+tic
 nworkers = 3;
 settings.isWorker = true;
 settings.nWorkers = nworkers;
@@ -16,18 +16,7 @@ gammas = [0.001, 0.01, 0.1, 1, 10, 100];
 nWorkers = settings.nWorkers + settings.isWorker;
 paramcell = cell(1, nWorkers);
 searchSpace = length(Cs)*length(gammas);
-offset = 0;
-if(searchSpace <= nWorkers)
-    nWorkers = searchSpace;
-    paramsplit = 1;
-else if(mod(searchSpace, nWorkers)==0)
-        paramsplit = searchSpace / nWorkers;
-        
-    else
-        paramsplit = floor(searchSpace / nWorkers);
-        offset = mod(searchSpace, nWorkers);
-    end
-end
+[nWorkers, paramsplit, offset] = getRessources(settings, searchSpace);
 m = 1;
 n = 1;
 off = 0;
@@ -50,4 +39,5 @@ end
 % Do something with res
 % detach Memory
 SharedMemory('detach', resKeys, res);
+toc;
 terminateSlaves; 
