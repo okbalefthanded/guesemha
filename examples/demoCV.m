@@ -1,5 +1,6 @@
 %% Okba Bekhelifi, <okba.bekhelif@univ-usto.dz> 07-18-2018
 % workers settings
+tic;
 nworkers = 3;
 settings.isWorker = true;
 settings.nWorkers = nworkers;
@@ -81,6 +82,7 @@ end
 best_param = paramcell{p}{r};
 % detach Memory
 SharedMemory('detach', resKeys, res);
+toc;
 % % kill slaves processes
 terminateSlaves;
 %   
