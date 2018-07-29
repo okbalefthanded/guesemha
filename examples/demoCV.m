@@ -22,7 +22,8 @@ fHandle.tr = 'svmtrain';
 fHandle.pr = 'svmpredict';
 % generate param cell
 Cs = [0.001, 0.01, 0.1, 1, 10, 100];
-gammas = [0.001, 0.01, 0.1, 1, 10, 100];
+% gammas = [0.001, 0.01, 0.1, 1, 10, 100];
+gammas = 0:0.01:2;
 nWorkers = settings.nWorkers + settings.isWorker;
 paramcell = cell(1, nWorkers);
 searchSpace = length(Cs)*length(gammas);
@@ -43,7 +44,8 @@ n = 1;
 off = 0;
 for i=1:nWorkers
     for k=1:(paramsplit+off)
-        tmp{k} = ['-t 2 -g ',num2str(gammas(n)),' ','-c ',num2str(Cs((m))),' ','-w1 1 -w-1 1'];
+%         tmp{k} = ['-t 2 -g ',num2str(gammas(n)),' ','-c ',num2str(Cs((m))),' ','-w1 1 -w-1 1'];
+        tmp{k} = ['-t 2 -g ',sprintf('%d',gammas(n)),' ','-c ',sprintf('%d',Cs((m))),' ','-w1 1 -w-1 1'];
         n = n + 1;
         if(n > length(gammas) && m < length(Cs))
             n = 1;

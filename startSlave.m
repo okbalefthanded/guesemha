@@ -9,7 +9,8 @@ fprintf('Recovering shared memory.\n');
 wPids = getWorkersPids();
 nWorkers = length(wPids);
 [~, workerRank] = find(sort(cellfun(@str2num, wPids))==feature('getPid'));
-pid = num2str(workerRank);
+% pid = num2str(workerRank);
+pid = sprintf('%d', workerRank);
 clear wPids
 % Set IPC
 masterPorts = 9091:9091+nWorkers;
@@ -81,7 +82,10 @@ SharedMemory('clone', resKey, workerResult);
 
 fprintf('Opening slave socket\n');
 fprintf('writing data to socket \n');
+
 fprintf(slaveSocket, '%d', feature('getPid'));
+% fwrite(slaveSocket, feature('getPid'), 'int32');
+
 fprintf('Data sent : %d to %d\n',... 
          slaveSocket.ValuesSent, ...
          slaveSocket.propinfo.RemotePort.DefaultValue...

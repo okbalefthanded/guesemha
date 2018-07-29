@@ -4,6 +4,8 @@ function [matlabPath] = findMatlabPath()
 % created 07-03-2018
 % last modification -- -- --
 % Okba Bekhelifi, <okba.bekhelif@univ-usto.dz>
-matlabPath = strcat( matlabroot, '\bin\matlab.exe');
+
+% matlabPath = strcat( matlabroot, '\bin\matlab.exe');
+matlabPath = sprintf('%s%s',matlabroot,'\bin\matlab.exe');
 end
 

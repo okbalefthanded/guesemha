@@ -14,7 +14,8 @@ pids = getWorkersPids();
 
 for proc = 1:length(pids)
     %     system(['taskkill -f -PID ' pid_raw{2, proc}]);
-    system(['taskkill -f -PID ' pids{proc}]);
+    %     system(['taskkill -f -PID ' pids{proc}]);
+    jsystem(['taskkill -f -PID ' pids{proc}]);
 end
 
 end
