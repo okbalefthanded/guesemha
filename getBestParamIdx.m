@@ -11,7 +11,6 @@ flag =0;
 for p=1:length(paramcell)
     for r = 1:length(paramcell{p})
         if(in==i)
-            %             id = [p, r];
             flag = 1;
             break;
         else

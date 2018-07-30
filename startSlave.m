@@ -1,40 +1,47 @@
-function [] = startSlave
+function [] = startSlave(debugMode)
 %STARTSLAVE Summary of this function goes here
 %   Detailed explanation goes here
 % created 06-20-2018
 % last modification -- -- --
 % Okba Bekhelifi, <okba.bekhelif@univ-usto.dz>
 clc;
-fprintf('Recovering shared memory.\n');
+if(debugMode)
+    fprintf('Recovering shared memory.\n');
+end
 wPids = getWorkersPids();
 nWorkers = length(wPids);
 [~, workerRank] = find(sort(cellfun(@str2num, wPids))==feature('getPid'));
-% pid = num2str(workerRank);
 pid = sprintf('%d', workerRank);
 clear wPids
 % Set IPC
 masterPorts = 9091:9091+nWorkers;
 slavePorts = 9191:9191+nWorkers;
-fprintf('Worker %d Opening communication channel on port: %d\n', ...
-         feature('getPid'), ...
-         slavePorts(workerRank)...
-         );
+if(debugMode)
+    fprintf('Worker %d Opening communication channel on port: %d\n', ...
+            feature('getPid'), ...
+            slavePorts(workerRank)...
+            );
+end
 slaveSocket = udp('Localhost', masterPorts(workerRank), ...
                   'LocalPort', slavePorts(workerRank)...
                   );
 fopen(slaveSocket);
+clear masterPorts slavePorts
 
 % Recover Shared Memory
 fHandle = SharedMemory('attach', 'shared_fhandle');
 datacell = SharedMemory('attach', 'shared_data');
+if(debugMode)
 fprintf('Data recovery succeded\n');
+end
 param = SharedMemory('attach', ['shared_' pid]);
 workerResult = cell(1, length(param));
 
 % Evaluate Functions
-fprintf('Worker %s Evaluating job\n', pid);
-% fprintf('Evaluatating function: %s\n', fhandle);
-
+if(debugMode)
+    fprintf('Worker %s Evaluating job\n', pid);
+%     fprintf('Evaluatating function: %s\n', fHandle);
+end
 if(isstruct(fHandle) && isstruct(datacell))
     % Train & Predict mode
     mode = 'double';
@@ -68,28 +75,32 @@ for p=1:length(param)
     end
 end
 % Detach SharedMemroy
-fprintf('Worker %s Detaching sharedMemory\n', pid);
+if(debugMode)
+    fprintf('Worker %s Detaching sharedMemory\n', pid);
+end
 SharedMemory('detach', 'shared_fhandle', fHandle);
 SharedMemory('detach', 'shared_data', datacell);
 SharedMemory('detach', ['shared_' pid], param);
 clear fhandle datacell param
 %
 % Write results in SharedMemory
-fprintf('Worker %s Writing results in sharedMemory\n', pid);
 resKey = ['res_' pid];
-fprintf('Worker %s shared result key %s\n', pid, resKey);
+if(debugMode)
+    fprintf('Worker %s Writing results in sharedMemory\n', pid);
+    fprintf('Worker %s shared result key %s\n', pid, resKey);
+end
 SharedMemory('clone', resKey, workerResult);
-
-fprintf('Opening slave socket\n');
-fprintf('writing data to socket \n');
-
+if(debugMode)
+    fprintf('Opening slave socket\n');
+    fprintf('writing data to socket \n');
+end
 fprintf(slaveSocket, '%d', feature('getPid'));
-% fwrite(slaveSocket, feature('getPid'), 'int32');
-
-fprintf('Data sent : %d to %d\n',... 
-         slaveSocket.ValuesSent, ...
-         slaveSocket.propinfo.RemotePort.DefaultValue...
-         );
+if(debugMode)
+    fprintf('Data sent : %d to %d\n',... 
+            slaveSocket.ValuesSent, ...
+            slaveSocket.propinfo.RemotePort.DefaultValue...
+            );
+end
 fclose(slaveSocket);
 delete(slaveSocket);
 end

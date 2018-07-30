@@ -4,6 +4,7 @@ tic;
 nworkers = 3;
 settings.isWorker = true;
 settings.nWorkers = nworkers;
+% settings.debugMode = 1;
 % load training data
 load iris_dataset
 x = irisInputs';

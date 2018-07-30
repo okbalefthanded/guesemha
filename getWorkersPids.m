@@ -5,10 +5,7 @@ function [pids] = getWorkersPids
 % created 06-20-2018
 % last modification -- -- --
 % Okba Bekhelifi, <okba.bekhelif@univ-usto.dz>
-
-% [~,result] = system('tasklist /FI "imagename eq matlab.exe" /fo table /nh');
 [~,result] = jsystem('tasklist /FI "imagename eq matlab.exe" /fo table /nh');
-% pid_raw = strsplit(result,' ');
 pid_raw = splitstr(result,' ');
 pid_raw(cellfun('isempty',pid_raw)) = [];
 row = 5;

@@ -13,8 +13,12 @@ if(nargin < 4)
     % Default settings
     settings.isWorker = 0;
     settings.nWorkers = feature('numCores') - 1;
+    settings.debugMode = 0;
 else
     settings = varargin{4};
+    if(~isfield(settings, 'debugMode'))
+        settings.debugMode = 0;
+    end
 end
 
 fHandle = varargin{1};
@@ -26,21 +30,24 @@ results = cell(1,settings.nWorkers + settings.isWorker);
 isMasterOn = 1;
 isSlavesOn = 1;
 workersDone = 0;
-
+debugMode = settings.debugMode;
 % set IPC
 masterPorts = 9091:9091+settings.nWorkers-1;
 slavePorts = 9191:9191+settings.nWorkers-1;
 commChannels = cell(1, settings.nWorkers);
 
 for channel=1:settings.nWorkers
-    fprintf('Creating a comm channel on port: %d\n', slavePorts(channel));
+    if(debugMode)
+        fprintf('Creating a comm channel on port: %d\n', slavePorts(channel));
+    end
     commChannels{channel} = udp('Localhost', slavePorts(channel),....
                                 'LocalPort', masterPorts(channel));
     fopen(commChannels{channel});
     
 end
-
-fprintf('Generating Shared memory.\n');
+if(debugMode)
+    fprintf('Generating Shared memory.\n');
+end
 % generate SharedMemory fhandle
 SharedMemory('clone', 'shared_fhandle', fHandle);
 % generate SharedMemory data
@@ -48,19 +55,17 @@ SharedMemory('clone', 'shared_data', dataCell);
 % generate SharedMemory params
 
 for worker = 1:settings.nWorkers
-    %     SharedMemory('clone', ['shared_' num2str(worker)], paramCell{worker+settings.isWorker});
-%     SharedMemory('clone', ['shared_' sprintf('%d', worker)], paramCell{worker+settings.isWorker});
     SharedMemory('clone', ['shared_' sprintf('%d', worker)], paramCell{worker});
 end
 
 % launch workers
-fprintf('Workers to launch: %d\n', settings.nWorkers);
-workersPid = launchWorkers(settings.nWorkers);
-disp(['Workers launched: ', workersPid]);
+workersPid = launchWorkers(settings.nWorkers, debugMode);
+if(debugMode)
+    fprintf('Workers to launch: %d\n', settings.nWorkers);
+    disp(['Workers launched: ', workersPid]);
+end
 sorted = sort(cellfun(@str2num, workersPid));
-% disp(masterPorts);
-% disp(slavePorts);
-% disp(sorted);
+
 
 receivedData = [];
 processStat = zeros(1, settings.nWorkers);
@@ -91,8 +96,7 @@ while(isMasterOn || isSlavesOn)
                     acc_folds(f) = af;
                 end                
                 masterResult{evaluation} = mean(acc_folds);
-            else
-                % TODO
+             else
                 masterResult{evaluation} = feval(fHandle, ...
                                                  dataCell{:}, ...
                                                  paramCell{end}{evaluation});
@@ -105,43 +109,51 @@ while(isMasterOn || isSlavesOn)
             clear dataCell fhandle paramCell
         end
         for channel=1:settings.nWorkers
-%             disp(['process stats: ' num2str(processStat)]);
-            disp(['process stats: ' sprintf('%d', processStat)]);
+            if(debugMode)
+                disp(['process stats: ' sprintf('%d', processStat)]);
+            end
             if(processStat(channel))
                 break;
             end
             tmp = fscanf(commChannels{channel}, '%d');
-%             tmp = fread(commChannels{channel}, 10, 'int32');
-            fprintf('--values received %d on port %d \n',commChannels{channel}.ValuesReceived, slavePorts(channel));
-            fprintf('--Data recieved %d on port %d \n', tmp, slavePorts(channel));
+            if(debugMode)
+                fprintf('--values received %d on port %d \n',commChannels{channel}.ValuesReceived, slavePorts(channel));
+                fprintf('--Data recieved %d on port %d \n', tmp, slavePorts(channel));
+            end
             if(~isempty(tmp))
-                fprintf('---Worker %d finished job\n', tmp);
+                if(debugMode)
+                    fprintf('---Worker %d finished job\n', tmp);
+                end
                 worker = find(sorted==tmp);
-%                 w = num2str(worker);
                 w = sprintf('%d', worker);
                 processStat(channel) = 1;
                 resKey = ['res_' w];
                 resKeys{worker} = resKey;
-                fprintf('---Collecting results from worker: %d \n', sorted(worker));
-                fprintf('---Attaching worker %d with key %s \n', sorted(worker), resKey);
+                if(debugMode)
+                    fprintf('---Collecting results from worker: %d \n', sorted(worker));
+                    fprintf('---Attaching worker %d with key %s \n', sorted(worker), resKey);
+                    fprintf(commChannels{channel},'%d', 1);
+                end                
                 resultCell{worker} = SharedMemory('attach', resKey);
-                fprintf(commChannels{channel},'%d', 1);
                 receivedData = [receivedData, tmp];
-%                 disp(['---receivedData : ' num2str(receivedData)]);
-                disp(['---receivedData : ' sprintf('%d', receivedData)]);
+                if(debugMode)
+                    disp(['---receivedData : ' sprintf('%d', receivedData)]);
+                end
                 if (length(receivedData)==settings.nWorkers)
                     % all workers have finished their jobs
                     workersDone = settings.nWorkers;
                     fprintf('**All workers have finished their jobs**.\n');
                 end
             else
-                fprintf('did not receive packet: Lost or unwritten (Timeout)\n');
+                if(debugMode)
+                    fprintf('did not receive packet: Lost or unwritten (Timeout)\n');
+                end
             end
         end
-%         disp(['process stats: ' num2str(processStat)]);
-        disp(['process stats: ' sprintf('%d', processStat)]);
+        if(debugMode)
+            disp(['process stats: ' sprintf('%d', processStat)]);
+        end
         if(workersDone == settings.nWorkers)
-            %         terminateSlaves;
             isSlavesOn = 0;
             if(~settings.isWorker)
                 isMasterOn = 0;
@@ -159,15 +171,15 @@ end
 
 fclose('all');
 delete('all');
-
-fprintf('Master freeing Shared memory.\n');
+if(debugMode)
+    fprintf('Master freeing Shared memory.\n');
+end
 % free SharedMemory fhandle
 SharedMemory('free', 'shared_fhandle');
 % free SharedMemory data
 SharedMemory('free', 'shared_data');
 % free SharedMemory params
 for worker = 1:settings.nWorkers
-%     SharedMemory('free', ['shared_' num2str(worker)]);
     SharedMemory('free', ['shared_' sprintf('%d', worker)]);
 end
 key = resKeys{1};
