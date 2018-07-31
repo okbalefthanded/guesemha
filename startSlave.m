@@ -120,8 +120,20 @@ end
 
 function d = getSplit(d, id)
 if(isstruct(d))
-    d.x = d.x(id, :); 
-    d.y = d.y(id, :);
+    fields = fieldnames(d);
+    if(numel(fields)==2)
+        d.x = d.x(id, :);
+        d.y = d.y(id, :);
+    else
+        for fd = 1:length(fields)
+            if(ndims(d.(fields{fd}))==3)
+                d.(fields{fd}) = d.(fields{fd})(:,:, id);
+            else if(ismatrix(d.(fields{fd})) && length(d.(fields{fd})) > sum(id) )
+                    d.(fields{fd}) = d.(fields{fd})(id);
+                end
+            end
+        end
+    end
 else
     d{1} = d{1}(id, :);
     d{2} = d{2}(id, :);
